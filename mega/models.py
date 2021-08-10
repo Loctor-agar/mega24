@@ -52,6 +52,7 @@ class Looking(models.Model):
 
 
 class Category(models.Model):
+    # Категории компаний
     name = models.CharField("Название категории", max_length=50)
     order_num = models.IntegerField()
 

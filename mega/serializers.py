@@ -81,7 +81,6 @@ class CuponSerializer(serializers.ModelSerializer):
 
 
 class ActivateCouponSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Operation
         fields = ("pin", "customer", "discount")
