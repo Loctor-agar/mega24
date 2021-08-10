@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView
 # Create your views here.
 from rest_framework.pagination import LimitOffsetPagination
@@ -37,7 +38,7 @@ class CompanyDetail(ListAPIView):
 
 
 class CuponCreate(APIView):
-
+    # Создание и вывод купона
     def get(self, request):
         operation = Operation.objects.all()
         serializer = CuponSerializer(operation, many=True)
@@ -52,12 +53,22 @@ class CuponCreate(APIView):
         return Response()
 
 
+def exist_customer_discount(discount_id, customer_id):
+    try:
+        return Operation.objects.get(discount=discount_id, customer=customer_id)
+    except Operation.DoesNotExist:
+        raise ValidationError()
+
+
 class ActivateCoupon(APIView):
     # Активация купона
 
     def post(self, request):
         serializer = ActivateCouponSerializer(data=request.data)
         if serializer.is_valid():
+            discount_id, customer_id = serializer.data['discount'], serializer.data['client']
+            operation = exist_customer_discount(discount_id, customer_id)
+            operation.status = '1'
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytz
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -44,7 +45,7 @@ class ReviewsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-def is_exist_operation(customer, discount):
+def exist_operation(customer, discount):
     """Валидация на существующий купон"""
     try:
         Operation.objects.get(discount=discount, customer=customer)
@@ -72,7 +73,7 @@ class CuponSerializer(serializers.ModelSerializer):
 
         amount_coupons = Operation.objects.filter(discount=data['discount'], status__in=['1', '2'])
 
-        if is_exist_operation(customer, discount):
+        if exist_operation(customer, discount):
             if len(amount_coupons) >= Company.objects.get(discount=discount).limit:
                 discount.dis.company.active = False
                 discount.dis.company.save()
@@ -81,8 +82,25 @@ class CuponSerializer(serializers.ModelSerializer):
 
 
 class ActivateCouponSerializer(serializers.ModelSerializer):
-    pin = serializers.IntegerField()
 
     class Meta:
         model = Operation
-        fields = ("pin", "client", "discount")
+        fields = ("pin", "customer", "discount")
+
+    def validate(self, data):
+        pin = data['pin']
+        discount = data['discount']
+        customer = data['customer']
+        status = Operation.objects.get(discount_id=discount.id, customer_id=customer.id).status
+        end_date_cupon = Operation.objects.get(discount_id=discount.id, customer_id=customer.id).end_date_cupon
+        local_tz = pytz.timezone('Asia/Kolkata')
+        current_datetime = datetime.now().replace(tzinfo=pytz.utc).astimezone(local_tz)
+        expired_on = end_date_cupon.replace(tzinfo=pytz.utc).astimezone(local_tz)
+        if current_datetime >= expired_on:
+            Operation.objects.update(status='3')
+            raise ValidationError('Срок действия купона завершен')
+        elif pin != int(discount.pin):
+            raise ValidationError('Неверный пин код')
+        elif status == '1':
+            raise ValidationError('Купон уже активирован')
+        return data
