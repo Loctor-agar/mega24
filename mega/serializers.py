@@ -55,7 +55,6 @@ def exist_operation(customer, discount):
 
 
 class CuponSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Operation
         fields = ("customer", "discount",)
